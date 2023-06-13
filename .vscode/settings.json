@@ -1,6 +1,17 @@
 {
     "cSpell.words": [
         "bigram",
-        "multinomial"
+        "chstr",
+        "imshow",
+        "itos",
+        "keepdim",
+        "logits",
+        "matplotlib",
+        "multinomial",
+        "probs",
+        "pyplot",
+        "randn",
+        "stoi",
+        "xenc"
     ]
 }
