@@ -6,12 +6,16 @@
         "itos",
         "keepdim",
         "logits",
+        "lossi",
         "matplotlib",
         "multinomial",
         "probs",
         "pyplot",
         "randn",
+        "stepi",
         "stoi",
-        "xenc"
+        "Xdev",
+        "xenc",
+        "Ydev"
     ]
 }
