@@ -16,6 +16,8 @@
         "stoi",
         "Xdev",
         "xenc",
-        "Ydev"
+        "Xtst",
+        "Ydev",
+        "Ytst"
     ]
 }
