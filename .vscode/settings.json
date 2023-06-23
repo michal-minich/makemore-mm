@@ -9,6 +9,7 @@
         "lossi",
         "matplotlib",
         "multinomial",
+        "nelement",
         "probs",
         "pyplot",
         "randn",
