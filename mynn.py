@@ -10,7 +10,7 @@ def findLowestIndex(arr: list) -> int:
     return ix
 
 def readFileSplitByLine(name: str) -> list[str]:
-    words = open(name, 'r').read().splitlines()
+    words = open(name, 'r', encoding='utf-8').read().splitlines()
     return words
 
 
@@ -83,26 +83,24 @@ class ForwardPassResult(Loss):
 
 def forwardPass(np: NetParameters,
                 trX: Tensor,
-                miniBatchIxs: Tensor,
-                embeddingSize: int,
-                contextSize: int,
-                trY: Tensor) -> ForwardPassResult:
+                trY: Tensor,                
+                miniBatchIxs: Tensor) -> ForwardPassResult:
     r = ForwardPassResult()
     r.emb = np.C[trX[miniBatchIxs]]
-    loss = getLoss(np, r.emb, embeddingSize, contextSize, trY[miniBatchIxs])
+    loss = getLoss(np, r.emb, trY[miniBatchIxs])
     r.h = loss.h
     r.logits = loss.logits  
     r.loss = loss.loss
     return r
 
 
+#@torch.no_grad()
 def getLoss(np: NetParameters,
             emb: Tensor,
-            embeddingSize: int,
-            contextSize: int,
             y: Tensor) -> Loss:
     r = Loss()
-    r.h = torch.tanh(emb.view(-1, embeddingSize * contextSize) @ np.W1 + np.b1)
+    embView = emb.view(emb.shape[0], -1)
+    r.h = torch.tanh(embView @ np.W1 + np.b1)
     r.logits = r.h @ np.W2 + np.b2
     r.loss = F.cross_entropy(r.logits, y)
     return r
@@ -119,7 +117,7 @@ def updateNet(parameters: list[Tensor],
               iteration: int,
               learningRate: float):
     #learningRate = lrs[iteration]
-    learningRate = 0.1 if iteration < 50_000 else 0.01
+    learningRate = 0.1 if iteration < 20_000 else 0.01
     for p in parameters:
        p.data += -learningRate * p.grad # type: ignore
 
