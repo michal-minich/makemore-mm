@@ -68,42 +68,43 @@ def makeNetwork(g: torch.Generator,
     return np
 
 
-class ForwardPassResult:
+class Loss:
+    h: Tensor
+    logits: Tensor
+    loss: Tensor
+
+
+class ForwardPassResult(Loss):
     emb: Tensor
     h: Tensor
     logits: Tensor
     loss: Tensor
 
+
 def forwardPass(np: NetParameters,
                 trX: Tensor,
-                ix: Tensor,
+                miniBatchIxs: Tensor,
                 embeddingSize: int,
                 contextSize: int,
                 trY: Tensor) -> ForwardPassResult:
     r = ForwardPassResult()
-    r.emb = np.C[trX[ix]]
-    loss = getLoss(np, emp, miniBatchIxs, embeddingSize, contextSize, trY)
-    r.h = torch.tanh(r.emb.view(-1, embeddingSize * contextSize) @ np.W1 + np.b1)
-    r.logits = r.h @ np.W2 + np.b2
-    r.loss = F.cross_entropy(r.logits, trY[ix])
+    r.emb = np.C[trX[miniBatchIxs]]
+    loss = getLoss(np, r.emb, embeddingSize, contextSize, trY[miniBatchIxs])
+    r.h = loss.h
+    r.logits = loss.logits  
+    r.loss = loss.loss
     return r
 
 
-class LossResult:
-    h: Tensor
-    logits: Tensor
-    loss: Tensor
-
 def getLoss(np: NetParameters,
             emb: Tensor,
-            miniBatchIxs: Tensor,
             embeddingSize: int,
             contextSize: int,
-            trY: Tensor) -> LossResult:
-    r = LossResult()
+            y: Tensor) -> Loss:
+    r = Loss()
     r.h = torch.tanh(emb.view(-1, embeddingSize * contextSize) @ np.W1 + np.b1)
     r.logits = r.h @ np.W2 + np.b2
-    r.loss = F.cross_entropy(r.logits, trY[miniBatchIxs])
+    r.loss = F.cross_entropy(r.logits, y)
     return r
 
 
@@ -118,16 +119,16 @@ def updateNet(parameters: list[Tensor],
               iteration: int,
               learningRate: float):
     #learningRate = lrs[iteration]
-    #learningRate = 0.1 if iteration < 50_000 else 0.01
+    learningRate = 0.1 if iteration < 50_000 else 0.01
     for p in parameters:
        p.data += -learningRate * p.grad # type: ignore
 
 
 def sample(np: NetParameters,
-        g: torch.Generator,
-        contextSize: int,
-        itos: dict[int, str],
-        countSamples: int):
+           g: torch.Generator,
+           contextSize: int,
+           itos: dict[int, str],
+           countSamples: int):
     for _ in range(countSamples):
         out = []
         context = [0] * contextSize
