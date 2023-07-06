@@ -1,6 +1,50 @@
 import torch
 import torch.nn.functional as F
 from torch import Tensor
+from datetime import datetime
+import os
+
+
+logFilePath = "log.txt"
+
+
+def log(
+    label: str | None = "",
+    *values: object,
+    sep: str | None = " ",
+    end: str | None = "\n"
+) -> None:
+    lbl = "" if label == None else f"{(label + ':'):<20}"
+    print(lbl, *values, sep=sep, end=end)
+    with open(logFilePath, "a") as f:
+        print(lbl, *values, sep=sep, end=end, file=f)
+
+
+def logSimple(
+    label: str | None = "",
+    *values: object,
+    sep: str | None = " ",
+    end: str | None = "\n"
+) -> None:
+    print(label, *values, sep=sep, end=end)
+    with open(logFilePath, "a") as f:
+        print(label, *values, sep=sep, end=end, file=f)
+
+
+def logSection(title: str) -> None:
+    log(title, "-------------------------- " + datetime.now().strftime("%Y-%m-%d_%H_%M_%S"))
+
+
+def initLogging() -> None:
+    currentDateTime = datetime.now()
+    currentDateTimeStr = currentDateTime.strftime("%Y-%m-%d_%H_%M_%S")
+    logsPath = "./logs/"
+    global logFilePath 
+    logFilePath = logsPath + currentDateTimeStr + ".txt"
+    if not os.path.exists(logsPath):
+        os.makedirs(logsPath)
+    log(currentDateTime.strftime("%Y-%m-%d %H:%M:%S") + "  ==========================================")
+
 
 def findLowestIndex(arr: list) -> int:
     ix = 0
@@ -10,17 +54,17 @@ def findLowestIndex(arr: list) -> int:
     return ix
 
 def readFileSplitByLine(name: str) -> list[str]:
-    words = open(name, 'r', encoding='utf-8').read().splitlines()
+    words = open(name, "r", encoding="utf-8").read().splitlines()
     return words
 
 
 def sToI(chars: list[str]) -> dict[str, int]:
    res =  {s:i+1 for i,s in enumerate(chars)}
-   res['.'] = 0
+   res["."] = 0
    return res;
 
 def sToI2(chars: list[str]) -> dict[str, int]:
-   stoi = { '.' : 0 }
+   stoi = { "." : 0 }
    for i, ch in enumerate(chars):
        stoi[ch] = i + 1
    return stoi
@@ -39,11 +83,11 @@ def buildDataSet(words: list[str],
     Y: list[int] = []
     for w in words:
         context = [0] * contextSize
-        for ch in w + '.':
+        for ch in w + ".":
             ix = stoi[ch]
             X.append(context)
             Y.append(ix)
-            #\print(''.join(itos[i] for i in context), '--->', itos[ix])
+            #\print("".join(itos[i] for i in context), "--->", itos[ix])
             context = context[1:] + [ix]
     return torch.tensor(X, device=dvc), torch.tensor(Y, device=dvc)
 
@@ -161,7 +205,7 @@ def sample(np: NetParameters,
             context = context[1:] + [ix]
             values.append(ix)
             s.values.append(itos[ix])
-            #print(''.join(itos[i] for i in values))
+            #print("".join(itos[i] for i in values))
             if ix == 0: 
                 break
         s.prob = calcOneProb(s.probs)
@@ -195,7 +239,7 @@ def sample2(np: NetParameters,
             context = context[1:] + [ix]
             values.append(ix)
             s.values.append(itos[ix])
-            #print(''.join(itos[i] for i in values))
+            #print("".join(itos[i] for i in values))
             if ix == 0: 
                 break
         s.prob = calcOneProb(probs2)

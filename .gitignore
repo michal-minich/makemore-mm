@@ -1,3 +1,4 @@
 events.out.tfevents.*
 .DS_Store
 *.pyc
+/logs/
