@@ -15,9 +15,7 @@ def log(
     end: str | None = "\n"
 ) -> None:
     lbl = "" if label == None else f"{(label + ':'):<20}"
-    print(lbl, *values, sep=sep, end=end)
-    with open(logFilePath, "a") as f:
-        print(lbl, *values, sep=sep, end=end, file=f)
+    logSimple(lbl, *values, sep=sep, end=end)
 
 
 def logSimple(
@@ -98,6 +96,8 @@ class NetParameters:
     b1: Tensor
     W2: Tensor
     b2: Tensor
+    batchNormGain: Tensor
+    batchNormBias: Tensor
     all: list[Tensor]
 
 
@@ -109,11 +109,11 @@ def makeNetwork(g: torch.Generator,
                 dvc: torch.device) -> NetParameters:
 
     fanIn = embeddingDims * contextSize
-    W1ratio = (5 / 3) / (fanIn ** 0.5)
+    W1ratio = 0.2 # (5 / 3) / (fanIn ** 0.5)
     log('W1ratio', W1ratio)
-    b1ratio = 0.001
+    b1ratio = 0.01
     log('b1ratio', b1ratio)
-    W2ratio = 0.01
+    W2ratio = 0.1
     log('W2ratio', W2ratio)
     b2ratio = 0
     log('b2ratio', b2ratio)
@@ -124,9 +124,12 @@ def makeNetwork(g: torch.Generator,
     np.b1 = b1ratio * torch.randn(hiddenLayerSize, generator = g, device=dvc) 
     np.W2 = W2ratio * torch.randn((hiddenLayerSize, vocabularyLength), generator = g, device=dvc)
     np.b2 = b2ratio * torch.randn(vocabularyLength, generator = g, device=dvc) 
-    np.all = [np.C, np.W1, np.b1, np.W2, np.b2]
+    np.batchNormGain = torch.ones((1, hiddenLayerSize))
+    np.batchNormBias = torch.zeros((1, hiddenLayerSize))
+    np.all = [np.C, np.W1, np.b1, np.W2, np.b2, np.batchNormGain, np.batchNormBias]
     for p in np.all:
         p.requires_grad = True
+        
     return np
 
 
@@ -150,7 +153,7 @@ def forwardPass(np: NetParameters,
     loss = getLoss(np, r.emb, trY[miniBatchIxs])
     r.hPreActivations = loss.hPreActivations
     r.h = loss.h
-    r.logits = loss.logits  
+    r.logits = loss.logits
     r.loss = loss.loss
     return r
 
@@ -160,6 +163,9 @@ def getLoss(np: NetParameters,
             y: Tensor) -> Loss:
     r = Loss()
     r.hPreActivations = emb.view(emb.shape[0], -1) @ np.W1 + np.b1
+    mean = r.hPreActivations.mean(0, keepdim=True)
+    std  = r.hPreActivations.std(0, keepdim=True)
+    r.hPreActivations = np.batchNormGain * (r.hPreActivations - mean) / std + np.batchNormBias
     r.h = torch.tanh(r.hPreActivations)
     r.logits = r.h @ np.W2 + np.b2
     r.loss = F.cross_entropy(r.logits, y)
@@ -211,7 +217,14 @@ def sample(np: NetParameters,
         context = [0] * contextSize
         while True:
             emb = np.C[torch.tensor([context])] # (1,block_size,d)
-            h = torch.tanh(emb.view(1, -1) @ np.W1 + np.b1)
+
+            hPreActivations = emb.view(emb.shape[0], -1) @ np.W1 + np.b1
+            mean = hPreActivations.mean(0, keepdim=True)
+            std  = hPreActivations.std(0, keepdim=True)
+            hPreActivations = np.batchNormGain * (hPreActivations - mean) / std + np.batchNormBias
+            h = torch.tanh(hPreActivations)
+
+            #h = torch.tanh(emb.view(1, -1) @ np.W1 + np.b1)
             logits = h @ np.W2 + np.b2
             counts = logits.exp() # counts, equivalent to next character
             probs = counts / counts.sum(1, keepdim=True) # probabilities for next character
