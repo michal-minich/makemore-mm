@@ -32,10 +32,10 @@ def logSimple(
 
 
 def logSection(title: str) -> None:
-    log(title, "-------------------------- " + datetime.now().strftime("%Y-%m-%d_%H_%M_%S"))
+    log(title, "-------------------------- " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
 
-def initLogging() -> None:
+def initLogging(title: str) -> None:
     currentDateTime = datetime.now()
     currentDateTimeStr = currentDateTime.strftime("%Y-%m-%d_%H_%M_%S")
     logsPath = "./logs/"
@@ -43,7 +43,7 @@ def initLogging() -> None:
     logFilePath = logsPath + currentDateTimeStr + ".txt"
     if not os.path.exists(logsPath):
         os.makedirs(logsPath)
-    log(currentDateTime.strftime("%Y-%m-%d %H:%M:%S") + "  ==========================================")
+    logSection(title)
 
 
 def findLowestIndex(arr: list) -> int:
@@ -107,12 +107,23 @@ def makeNetwork(g: torch.Generator,
                 contextSize: int, 
                 hiddenLayerSize: int,
                 dvc: torch.device) -> NetParameters:
+
+    fanIn = embeddingDims * contextSize
+    W1ratio = (5 / 3) / (fanIn ** 0.5)
+    log('W1ratio', W1ratio)
+    b1ratio = 0.001
+    log('b1ratio', b1ratio)
+    W2ratio = 0.01
+    log('W2ratio', W2ratio)
+    b2ratio = 0
+    log('b2ratio', b2ratio)
+
     np = NetParameters()
-    np.C = torch.randn((vocabularyLength, embeddingDims), generator = g, device=dvc)
-    np.W1 = torch.randn((embeddingDims * contextSize, hiddenLayerSize), generator = g, device=dvc) * 0.2
-    np.b1 = torch.randn(hiddenLayerSize, generator = g, device=dvc) * 0.01
-    np.W2 = torch.randn((hiddenLayerSize, vocabularyLength), generator = g, device=dvc) * 0.01
-    np.b2 = torch.randn(vocabularyLength, generator = g, device=dvc) * 0
+    np.C =  torch.randn((vocabularyLength, embeddingDims), generator = g, device=dvc)
+    np.W1 = W1ratio * torch.randn((fanIn, hiddenLayerSize), generator = g, device=dvc) 
+    np.b1 = b1ratio * torch.randn(hiddenLayerSize, generator = g, device=dvc) 
+    np.W2 = W2ratio * torch.randn((hiddenLayerSize, vocabularyLength), generator = g, device=dvc)
+    np.b2 = b2ratio * torch.randn(vocabularyLength, generator = g, device=dvc) 
     np.all = [np.C, np.W1, np.b1, np.W2, np.b2]
     for p in np.all:
         p.requires_grad = True
@@ -174,6 +185,11 @@ def updateNet(parameters: list[Tensor],
     for p in parameters:
        p.data += -res.learningRate * p.grad # type: ignore
     return res
+
+class Losses:
+    tr: Loss
+    dev: Loss
+    tst: Loss
 
 class Sample:
     values: list[str]
