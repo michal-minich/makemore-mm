@@ -34,7 +34,7 @@ def buildDataSet(words: list[str],
                  contextSize: int, 
                  stoi: dict[str, int], 
                  itos: dict[int, str],
-                 dvc: str) -> tuple[Tensor, Tensor]:
+                 dvc: torch.device) -> tuple[Tensor, Tensor]:
     X: list[list[int]] = []
     Y: list[int] = []
     for w in words:
@@ -62,13 +62,13 @@ def makeNetwork(g: torch.Generator,
                 embeddingDims: int, 
                 contextSize: int, 
                 hiddenLayerSize: int,
-                dvc: str) -> NetParameters:
+                dvc: torch.device) -> NetParameters:
     np = NetParameters()
     np.C = torch.randn((vocabularyLength, embeddingDims), generator = g, device=dvc)
-    np.W1 = torch.randn((embeddingDims * contextSize, hiddenLayerSize), generator = g, device=dvc)
-    np.b1 = torch.randn(hiddenLayerSize, generator = g, device=dvc)
-    np.W2 = torch.randn((hiddenLayerSize, vocabularyLength), generator = g, device=dvc)
-    np.b2 = torch.randn(vocabularyLength, generator = g, device=dvc) 
+    np.W1 = torch.randn((embeddingDims * contextSize, hiddenLayerSize), generator = g, device=dvc) * 0.2
+    np.b1 = torch.randn(hiddenLayerSize, generator = g, device=dvc) * 0.01
+    np.W2 = torch.randn((hiddenLayerSize, vocabularyLength), generator = g, device=dvc) * 0.01
+    np.b2 = torch.randn(vocabularyLength, generator = g, device=dvc) * 0
     np.all = [np.C, np.W1, np.b1, np.W2, np.b2]
     for p in np.all:
         p.requires_grad = True
@@ -76,6 +76,7 @@ def makeNetwork(g: torch.Generator,
 
 
 class Loss:
+    hPreActivations: Tensor
     h: Tensor
     logits: Tensor
     loss: Tensor
@@ -92,6 +93,7 @@ def forwardPass(np: NetParameters,
     r = ForwardPassResult()
     r.emb = np.C[trX[miniBatchIxs]]
     loss = getLoss(np, r.emb, trY[miniBatchIxs])
+    r.hPreActivations = loss.hPreActivations
     r.h = loss.h
     r.logits = loss.logits  
     r.loss = loss.loss
@@ -102,8 +104,8 @@ def getLoss(np: NetParameters,
             emb: Tensor,
             y: Tensor) -> Loss:
     r = Loss()
-    hPreActivations = emb.view(emb.shape[0], -1) @ np.W1 + np.b1
-    r.h = torch.tanh(hPreActivations)
+    r.hPreActivations = emb.view(emb.shape[0], -1) @ np.W1 + np.b1
+    r.h = torch.tanh(r.hPreActivations)
     r.logits = r.h @ np.W2 + np.b2
     r.loss = F.cross_entropy(r.logits, y)
     return r
@@ -115,14 +117,19 @@ def backwardPass(parameters: list[Tensor],
     p.grad = None
   loss.backward()
 
+class UpdateNetResult:
+    learningRate: float;
 
 def updateNet(parameters: list[Tensor],
               iteration: int,
-              learningRate: float):
-    #learningRate = lrs[iteration]
-    learningRate = 0.1 if iteration < 80_000 else 0.01
+              maxIteration: int,
+              startLr: float,
+              endLr: float) -> UpdateNetResult:
+    res = UpdateNetResult()
+    res.learningRate = max(endLr, startLr - (startLr - endLr) * iteration / maxIteration)
     for p in parameters:
-       p.data += -learningRate * p.grad # type: ignore
+       p.data += -res.learningRate * p.grad # type: ignore
+    return res
 
 class Sample:
     values: list[str]
