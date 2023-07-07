@@ -2,7 +2,9 @@
     "cSpell.words": [
         "bigram",
         "chstr",
+        "cmap",
         "dtype",
+        "figsize",
         "imshow",
         "itos",
         "keepdim",

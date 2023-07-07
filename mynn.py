@@ -109,7 +109,7 @@ def makeNetwork(g: torch.Generator,
                 dvc: torch.device) -> NetParameters:
 
     fanIn = embeddingDims * contextSize
-    W1ratio = 0.2 # (5 / 3) / (fanIn ** 0.5)
+    W1ratio = (5 / 3) / (fanIn ** 0.5) # 0.2
     log('W1ratio', W1ratio)
     b1ratio = 0.01
     log('b1ratio', b1ratio)
@@ -220,81 +220,66 @@ class Sample:
     probs: list[float]
     prob: float
 
-def sample(np: NetParameters,
+
+def calcOneProb(probs: list[float]) -> float:
+    total = probs[0]
+    length = len(probs)
+    for p in probs[1:]:
+        total *= p ** (1 / length)
+    return total
+
+
+def sampleMany(np: NetParameters,
+               cal: CalibrationResult,
+               g: torch.Generator,
+               contextSize: int,
+               itos: dict[int, str],
+               countSamples: int,
+               maxSampleLength: int) -> list[Sample]:
+    samples: list[Sample] = []
+    for _ in range(countSamples):
+        s = sampleOne(np, cal, g, contextSize, itos, maxSampleLength)
+        if s == None:
+            break
+        samples.append(s)
+    return samples
+
+
+def getProbs(np: NetParameters,
+             cal: CalibrationResult,
+             context: list[int]) -> Tensor:
+    emb = np.C[torch.tensor([context])] 
+    hPreActivations = emb.view(emb.shape[0], -1) @ np.W1 
+    hPreActivations = np.batchNormGain * (hPreActivations - cal.mean) / cal.std + np.batchNormBias
+    h = torch.tanh(hPreActivations)
+    logits = h @ np.W2 + np.b2
+    counts = logits.exp() # counts, equivalent to next character
+    probs = counts / counts.sum(1, keepdim=True) # probabilities for next character
+    #=probs = F.softmax(logits, dim=1)
+    return probs
+
+
+def sampleOne(np: NetParameters,
            cal: CalibrationResult,
            g: torch.Generator,
            contextSize: int,
            itos: dict[int, str],
-           countSamples: int) -> list[Sample]:
-    samples: list[Sample] = []
-    for _ in range(countSamples):
-        values: list[int] = []
-        s = Sample()
-        samples.append(s)
-        s.values = []
-        s.probs = []
-        context = [0] * contextSize
-        while True:
-            emb = np.C[torch.tensor([context])] 
-            hPreActivations = emb.view(emb.shape[0], -1) @ np.W1 
-            hPreActivations = np.batchNormGain * (hPreActivations - cal.mean) / cal.std + np.batchNormBias
-            h = torch.tanh(hPreActivations)
-            logits = h @ np.W2 + np.b2
-            counts = logits.exp() # counts, equivalent to next character
-            probs = counts / counts.sum(1, keepdim=True) # probabilities for next character
-            #=probs = F.softmax(logits, dim=1)
-            ix = int(torch.multinomial(probs, num_samples=1, generator=g).item())
-            s.probs.append(probs[0, ix].item() / (1/27) )
-            context = context[1:] + [ix]
-            values.append(ix)
-            s.values.append(itos[ix])
-            if ix == 0: 
-                break
-        s.prob = calcOneProb(s.probs)
-    return samples
+           maxLength: int) -> Sample | None:
+    s = Sample()
+    s.values = []
+    s.probs = []
+    context = [0] * contextSize
+    for i in range(maxLength):
+        probs = getProbs(np, cal, context)
+        ix = int(torch.multinomial(probs, num_samples=1, generator=g).item())
+        s.probs.append(probs[0, ix].item())
+        context = context[1:] + [ix]
+        s.values.append(itos[ix])
+        if ix == 0: 
+            break
+    s.prob = calcOneProb(s.probs)
+    return s
 
-
-def sample2(np: NetParameters,
-            cal: CalibrationResult,
-            g: torch.Generator,
-            contextSize: int,
-            itos: dict[int, str],
-            countSamples: int) -> list[Sample]:
-    samples: list[Sample] = []
-    for _ in range(countSamples):
-        values: list[int] = []
-        s = Sample()
-        samples.append(s)
-        s.values = []
-        s.probs = []
-        probs2: list[float] = []
-        context = [0] * contextSize
-        while True:
-            emb = np.C[torch.tensor([context])]
-            hPreActivations = emb.view(emb.shape[0], -1) @ np.W1
-            hPreActivations = np.batchNormGain * (hPreActivations - cal.mean) / cal.std + np.batchNormBias
-            h = torch.tanh(hPreActivations)
-            logits = h @ np.W2 + np.b2
-            counts = logits.exp() # counts, equivalent to next character
-            probs = counts / counts.sum(1, keepdim=True) # probabilities for next character
-            #probs = F.softmax(logits, dim=1)
-            ix = int(torch.multinomial(probs, num_samples=1, generator=g).item())
-            probs2.append(probs[0, ix].item())
-            s.probs.append(probs[0, ix].item() / (1/27) )
-            context = context[1:] + [ix]
-            values.append(ix)
-            s.values.append(itos[ix])
-            if ix == 0: 
-                break
-        s.prob = calcOneProb(probs2)
-    return samples
-
-
-def calcOneProb(probs: list[float]) -> float:
-    total = probs[0]
-    for p in probs[1:]:
-        total *= p
-    return total / len(probs)
 
 
 def calcProb(np: NetParameters,
@@ -302,19 +287,11 @@ def calcProb(np: NetParameters,
              sample: str,
              contextSize: int,
              stoi: dict[str, int]) -> list[float]:
-    values: list[int] = []
     ps: list[float] = []
-    probs2: list[float] = []
     context = [0] * contextSize
     for i in range(len(sample)):
-        emb = np.C[torch.tensor([context])]    
-        hPreActivations = emb.view(emb.shape[0], -1) @ np.W1
-        hPreActivations = np.batchNormGain * (hPreActivations - cal.mean) / cal.std + np.batchNormBias
-        h = torch.tanh(hPreActivations)
-        logits = h @ np.W2 + np.b2
-        counts = logits.exp() 
-        probs = counts / counts.sum(1, keepdim=True)
+        probs = getProbs(np, cal, context)
         ix = stoi[sample[i]]
-        ps.append(probs[0, ix].item() / (1/27) )
+        ps.append(probs[0, ix].item())
         context = context[1:] + [ix]
     return ps
