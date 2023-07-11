@@ -18,10 +18,13 @@
         "randn",
         "stepi",
         "stoi",
+        "xchat",
         "Xdev",
         "xenc",
         "xlabel",
+        "xmean",
         "Xtst",
+        "xvar",
         "Ydev",
         "Ytst"
     ]
