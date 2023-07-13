@@ -16,6 +16,7 @@
         "probs",
         "pyplot",
         "randn",
+        "softmax",
         "stepi",
         "stoi",
         "xchat",
