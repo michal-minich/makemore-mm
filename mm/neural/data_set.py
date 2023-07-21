@@ -7,6 +7,7 @@ def sToI(chars: list[str]) -> dict[str, int]:
    res["."] = 0
    return res;
 
+
 def sToI2(chars: list[str]) -> dict[str, int]:
    stoi = { "." : 0 }
    for i, ch in enumerate(chars):

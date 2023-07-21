@@ -7,6 +7,7 @@ def findLowestIndex(arr: list) -> int:
             ix = i
     return ix
 
+
 def readFileSplitByLine(name: str) -> list[str]:
     words = open(name, "r", encoding="utf-8").read().splitlines()
     return words

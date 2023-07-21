@@ -1,6 +1,6 @@
 events.out.tfevents.*
 .DS_Store
 *.pyc
-/logs/
-log.txt
+**/logs/
+/logs/log.txt
 __pycache__

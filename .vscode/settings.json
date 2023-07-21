@@ -1,9 +1,11 @@
 {
     "cSpell.words": [
+        "arange",
         "bigram",
         "chstr",
         "cmap",
         "dtype",
+        "facecolor",
         "figsize",
         "imshow",
         "itos",
@@ -27,6 +29,7 @@
         "Xtst",
         "xvar",
         "Ydev",
+        "ylim",
         "Ytst"
     ],
     "files.exclude": {

@@ -3,7 +3,7 @@ from datetime import datetime
 import os
 
 
-logFilePath = "log.txt"
+logFilePath = "logs/log.txt"
 
 
 def log(
