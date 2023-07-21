@@ -5,20 +5,20 @@ from mm.common import *
 from layers import *
 
 
-class NetParameters2:
+class NetParameters:
     C: Tensor
     layers: list[Layer]
     parameters: list[Tensor]
 
 
-def makeNetwork2(g: torch.Generator, 
+def makeNetwork(g: torch.Generator, 
                 vocabularyLength: int, 
                 embeddingDims: int, 
                 contextSize: int, 
                 hiddenLayerSize: int,
                 dtype: torch.dtype,
-                dvc: torch.device) -> NetParameters2:
-    np = NetParameters2()
+                dvc: torch.device) -> NetParameters:
+    np = NetParameters()
     np.C = torch.rand((vocabularyLength, embeddingDims), generator=g)
     firstLayer = LinearWithBias(embeddingDims * contextSize, hiddenLayerSize, g, dtype, dvc)
     np.layers = [
@@ -45,4 +45,14 @@ def makeNetwork2(g: torch.Generator,
     for p in np.parameters:
         p.requires_grad = True
     return np
+
+
+def printNetworkInfo(np: NetParameters):
+    log('Network Structure')
+    for l in np.layers:
+        logSimple("Layer " + l.name + ": ", end="")
+        for p in l.parameters():
+            logSimple(p.shape, end="; ")
+        logSimple()
+    log('Parameters Count', sum(p.nelement() for p in np.parameters))
 

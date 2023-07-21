@@ -4,7 +4,7 @@ from torch import Tensor
 from mm.printing import *
 from mm.common import *
 from mm.neural.neural import *
-from mm.neural.data_set import *
+from mm.neural.data import *
 from network import *
 
 

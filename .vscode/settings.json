@@ -15,6 +15,7 @@
         "matplotlib",
         "multinomial",
         "nelement",
+        "numel",
         "probs",
         "pyplot",
         "randn",

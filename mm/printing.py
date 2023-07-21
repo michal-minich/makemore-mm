@@ -1,6 +1,7 @@
 from typing import Any
 from datetime import datetime
 import os
+from torch import Size
 
 
 logFilePath = "logs/log.txt"
@@ -17,14 +18,14 @@ def log(
 
 
 def logSimple(
-    label: Any | None = "",
     *values: object,
     sep: str | None = " ",
     end: str | None = "\n"
 ) -> None:
-    print(label, *values, sep=sep, end=end)
+    vs = [getSizeString(v) if isinstance(v, Size) else v for v in values]
+    print(*vs, sep=sep, end=end)
     with open(logFilePath, "a") as f:
-        print(label, *values, sep=sep, end=end, file=f)
+        print(*vs, sep=sep, end=end, file=f)
 
 
 def logSection(title: str) -> None:
@@ -40,3 +41,7 @@ def initLogging(title: str) -> None:
     if not os.path.exists(logsPath):
         os.makedirs(logsPath)
     logSection(title)
+
+
+def getSizeString(size: Size) -> str: 
+    return "[" + ", ".join(str(dim) for dim in size) + "]"

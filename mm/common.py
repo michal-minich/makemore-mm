@@ -1,5 +1,8 @@
 
 
+from torch import Size
+
+
 def findLowestIndex(arr: list) -> int:
     ix = 0
     for i in range(1, len(arr)):
@@ -11,4 +14,3 @@ def findLowestIndex(arr: list) -> int:
 def readFileSplitByLine(name: str) -> list[str]:
     words = open(name, "r", encoding="utf-8").read().splitlines()
     return words
-

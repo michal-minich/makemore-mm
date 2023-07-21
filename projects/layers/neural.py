@@ -4,51 +4,51 @@ from torch import Tensor
 from mm.printing import *
 from mm.common import *
 from mm.neural.neural import *
-from mm.neural.data_set import *
+from mm.neural.data import *
 from layers import *
 from network import *
 
 
-class Loss2:
+class Loss:
     logits: Tensor
     loss: Tensor
     
 
-def getLoss2(np: NetParameters2,
-             emb: Tensor,
-             y: Tensor) -> Loss2:
-    r = Loss2()
-    r.logits = getLogits2(np, emb)
+def getLoss(np: NetParameters,
+            emb: Tensor,
+            y: Tensor) -> Loss:
+    r = Loss()
+    r.logits = getLogits(np, emb)
     r.loss = F.cross_entropy(r.logits, y)#.long())
     return r
 
 
-def getLogits2(np: NetParameters2, emb: Tensor) -> Tensor:
+def getLogits(np: NetParameters, emb: Tensor) -> Tensor:
     logits = emb.view(emb.shape[0], -1)
     for l in np.layers:
         logits = l(logits)
     return logits
 
 
-class ForwardPassResult2(Loss2):
+class ForwardPassResult(Loss):
     emb: Tensor
 
 
-def forwardPass2(np: NetParameters2,
-                 trX: Tensor,
-                 trY: Tensor,                
-                 miniBatchIxs: Tensor) -> ForwardPassResult2:
-    r = ForwardPassResult2()
+def forwardPass(np: NetParameters,
+                trX: Tensor,
+                trY: Tensor,                
+                miniBatchIxs: Tensor) -> ForwardPassResult:
+    r = ForwardPassResult()
     trBatchX = trX[miniBatchIxs]
     trBatchY = trY[miniBatchIxs]
     r.emb = np.C[trBatchX]
-    loss = getLoss2(np, r.emb, trBatchY)
+    loss = getLoss(np, r.emb, trBatchY)
     r.logits =  loss.logits
     r.loss = loss.loss
     return r
 
 
-def backwardPass2(layers: list[Layer],
+def backwardPass(layers: list[Layer],
                   parameters: list[Tensor],
                   loss: Tensor) -> None:
     for l in layers:
@@ -58,13 +58,13 @@ def backwardPass2(layers: list[Layer],
     loss.backward()
 
 
-class Losses2:
-    tr: Loss2
-    val: Loss2
-    tst: Loss2
+class Losses:
+    tr: Loss
+    val: Loss
+    tst: Loss
     
 
-def sampleMany2(np: NetParameters2,
+def sampleMany(np: NetParameters,
                g: torch.Generator,
                contextSize: int,
                itos: dict[int, str],
@@ -72,31 +72,31 @@ def sampleMany2(np: NetParameters2,
                maxSampleLength: int) -> list[Sample]:
     samples: list[Sample] = []
     for _ in range(countSamples):
-        s = sampleOne2(np, g, contextSize, itos, maxSampleLength)
+        s = sampleOne(np, g, contextSize, itos, maxSampleLength)
         if s == None:
             break
         samples.append(s)
     return samples
 
 
-def getProbs2(np: NetParameters2, context: list[int]) -> Tensor:
+def getProbs(np: NetParameters, context: list[int]) -> Tensor:
     emb = np.C[torch.tensor([context])]
-    logits = getLogits2(np, emb)
+    logits = getLogits(np, emb)
     probs = F.softmax(logits, dim=1)
     return probs
 
 
-def sampleOne2(np: NetParameters2,
-           g: torch.Generator,
-           contextSize: int,
-           itos: dict[int, str],
-           maxLength: int) -> Sample | None:
+def sampleOne(np: NetParameters,
+              g: torch.Generator,
+              contextSize: int,
+              itos: dict[int, str],
+              maxLength: int) -> Sample | None:
     s = Sample()
     s.values = []
     s.probs = []
     context = [0] * contextSize
     for i in range(maxLength):
-        probs = getProbs2(np, context)
+        probs = getProbs(np, context)
         ix = int(torch.multinomial(probs, num_samples=1, generator=g).item())
         s.probs.append(probs[0, ix].item())
         context = context[1:] + [ix]
