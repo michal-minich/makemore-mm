@@ -24,15 +24,15 @@ def makeNetwork(g: torch.Generator,
     np.layers = [
         firstLayer,
         Tanh(),
-        LinearWithBias(hiddenLayerSize, hiddenLayerSize, g, dtype, dvc),
-        #Tanh(),
         #LinearWithBias(hiddenLayerSize, hiddenLayerSize, g, dtype, dvc),
         #Tanh(),
         #LinearWithBias(hiddenLayerSize, hiddenLayerSize, g, dtype, dvc),
         #Tanh(),
         #LinearWithBias(hiddenLayerSize, hiddenLayerSize, g, dtype, dvc),
         #Tanh(),
-        #LinearWithBias(hiddenLayerSize, vocabularyLength, g, dtype, dvc),
+        #LinearWithBias(hiddenLayerSize, hiddenLayerSize, g, dtype, dvc),
+        #Tanh(),
+        LinearWithBias(hiddenLayerSize, vocabularyLength, g, dtype, dvc),
     ]
     with torch.no_grad():
         # last layer: make less confident

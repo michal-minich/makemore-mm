@@ -18,14 +18,14 @@ def getLoss(np: NetParameters,
             emb: Tensor,
             y: Tensor) -> Loss:
     r = Loss()
-    r.logits = getLogits(np, emb)
+    r.logits = getLogits(np.layers, emb)
     r.loss = F.cross_entropy(r.logits, y)#.long())
     return r
 
 
-def getLogits(np: NetParameters, emb: Tensor) -> Tensor:
+def getLogits(layers: list[Layer], emb: Tensor) -> Tensor:
     logits = emb.view(emb.shape[0], -1)
-    for l in np.layers:
+    for l in layers:
         logits = l(logits)
     return logits
 
@@ -39,10 +39,10 @@ def forwardPass(np: NetParameters,
                 trY: Tensor,                
                 miniBatchIxs: Tensor) -> ForwardPassResult:
     r = ForwardPassResult()
-    trBatchX = trX[miniBatchIxs]
-    trBatchY = trY[miniBatchIxs]
-    r.emb = np.C[trBatchX]
-    loss = getLoss(np, r.emb, trBatchY)
+    batchX = trX[miniBatchIxs]
+    batchY = trY[miniBatchIxs]
+    r.emb = np.C[batchX]
+    loss = getLoss(np, r.emb, batchY)
     r.logits =  loss.logits
     r.loss = loss.loss
     return r
@@ -81,7 +81,7 @@ def sampleMany(np: NetParameters,
 
 def getProbs(np: NetParameters, context: list[int]) -> Tensor:
     emb = np.C[torch.tensor([context])]
-    logits = getLogits(np, emb)
+    logits = getLogits(np.layers, emb)
     probs = F.softmax(logits, dim=1)
     return probs
 
@@ -105,3 +105,18 @@ def sampleOne(np: NetParameters,
             break
     s.prob = calcOneProb(s.probs)
     return s
+
+
+def calcProb(np: NetParameters,
+             sample: str,
+             contextSize: int,
+             stoi: dict[str, int]) -> list[float]:
+    ps: list[float] = []
+    context = [0] * contextSize
+    for i in range(len(sample)):
+        probs = getProbs(np, context)
+        ix = stoi[sample[i]]
+        ps.append(probs[0, ix].item())
+        context = context[1:] + [ix]
+    return ps
+
