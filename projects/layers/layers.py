@@ -47,7 +47,7 @@ class Linear(Layer):
         return [self.weight]
 
 
-class LinearWithBias(Linear):
+class LinearWithBias(Layer):
 
     def __init__(self: 'LinearWithBias',
                  fanIn: int, 
@@ -55,13 +55,16 @@ class LinearWithBias(Linear):
                  generator: torch.Generator,
                  dtype: torch.dtype,
                  device: torch.device) -> None:
-        super().__init__(fanIn, fanOut, generator, dtype, device)
+        #super().__init__(fanIn, fanOut, generator, dtype, device)
+        super().__init__()
+        self.weight: Tensor = torch.rand(
+            (fanIn, fanOut), generator=generator, dtype=dtype, device=device) / fanIn ** 0.5
         self.bias = torch.zeros(fanOut, dtype=dtype, device=device)
 
 
     def __call__(self: 'LinearWithBias', x: Tensor) -> Tensor:
-        super().__call__(x)
-        self.out += self.bias
+        #super().__call__(x)
+        self.out = x @ self.weight + self.bias
         return self.out
 
 
@@ -80,7 +83,7 @@ class BatchNorm1d(Layer):
         super().__init__()
         self.eps = eps
         self.momentum = momentum
-        self.updateRunning = True
+        self.training = True
         # parameters (trained with back-propagation)
         self.gamma = torch.ones(dim, dtype=dtype, device=device)
         self.beta = torch.zeros(dim, dtype=dtype, device=device)
@@ -91,7 +94,7 @@ class BatchNorm1d(Layer):
 
     def __call__(self: 'BatchNorm1d', x: Tensor) -> Tensor:
         # calculate forward pass
-        if self.updateRunning:
+        if self.training:
             xmean = x.mean(0, keepdim=True) # batch mean
             xvar = x.var(0, keepdim=True) # batch variance
         else:
@@ -100,7 +103,7 @@ class BatchNorm1d(Layer):
         xchat = (x - xmean) / torch.sqrt(xvar + self.eps) # normalize to unit variance
         self.out = self.gamma * xchat + self.beta
         # update the buffers
-        if self.updateRunning:
+        if self.training:
             with torch.no_grad():
                     self.running_mean = (1 - self.momentum) * self.running_mean + self.momentum * xmean
                     self.running_var = (1 - self.momentum) * self.running_var + self.momentum * xvar
@@ -113,8 +116,11 @@ class BatchNorm1d(Layer):
 
 class Tanh(Layer):
 
-    def __call__(self: 'Tanh', x: Tensor) -> Tensor:
+    def __init__(self : 'Tanh') -> None:
         super().__init__()
+
+
+    def __call__(self: 'Tanh', x: Tensor) -> Tensor:
         self.out = torch.tanh(x)
         return self.out
 

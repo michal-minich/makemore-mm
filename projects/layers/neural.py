@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 from torch import Tensor
+import matplotlib.pyplot as plt
 from mm.printing import *
 from mm.common import *
 from mm.neural.neural import *
@@ -43,7 +44,7 @@ def forwardPass(np: NetParameters,
     batchY = trY[miniBatchIxs]
     r.emb = np.C[batchX]
     loss = getLoss(np, r.emb, batchY)
-    r.logits =  loss.logits
+    r.logits = loss.logits
     r.loss = loss.loss
     return r
 
@@ -120,3 +121,18 @@ def calcProb(np: NetParameters,
         context = context[1:] + [ix]
     return ps
 
+
+def plotActivationsDistribution(np: NetParameters, T: type, useGrad = False):
+    title = 'Activation distribution - ' + T.__name__ + " (Grad)" if useGrad else ""
+    plt.figure(figsize=(20,4))
+    legends = []
+    logSimple(title)
+    for l in np.layers:
+        if isinstance(l, T):
+            t : Tensor = l.out.grad if useGrad else l.out # type: ignore
+            log("  " + l.name, f"mean: {t.mean():+.5f}, std: {t.std():+.5f}, saturated: {(t.abs() > 0.97).float().mean() * 100:.2f}")
+            hy, hx = torch.histogram(t, density=True)
+            plt.plot(hx[:-1].detach(), hy.detach())
+            legends.append(f'layer ({l.name})')
+    plt.legend(legends);
+    plt.title(title);

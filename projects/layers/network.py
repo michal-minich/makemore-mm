@@ -21,25 +21,37 @@ def makeNetwork(g: torch.Generator,
     np = NetParameters()
     np.C = torch.rand((vocabularyLength, embeddingDims), generator=g)
     firstLayer = LinearWithBias(embeddingDims * contextSize, hiddenLayerSize, g, dtype, dvc)
+
     np.layers = [
         firstLayer,
+        #BatchNorm1d(hiddenLayerSize, dtype, dvc),
         Tanh(),
-        #LinearWithBias(hiddenLayerSize, hiddenLayerSize, g, dtype, dvc),
-        #Tanh(),
-        #LinearWithBias(hiddenLayerSize, hiddenLayerSize, g, dtype, dvc),
-        #Tanh(),
-        #LinearWithBias(hiddenLayerSize, hiddenLayerSize, g, dtype, dvc),
-        #Tanh(),
-        #LinearWithBias(hiddenLayerSize, hiddenLayerSize, g, dtype, dvc),
-        #Tanh(),
-        LinearWithBias(hiddenLayerSize, vocabularyLength, g, dtype, dvc),
-    ]
+        LinearWithBias(hiddenLayerSize, hiddenLayerSize, g, dtype, dvc),
+        #BatchNorm1d(hiddenLayerSize, dtype, dvc),
+        Tanh(),
+        LinearWithBias(hiddenLayerSize, hiddenLayerSize, g, dtype, dvc),
+        #BatchNorm1d(hiddenLayerSize, dtype, dvc),
+        Tanh(),
+        LinearWithBias(hiddenLayerSize, hiddenLayerSize, g, dtype, dvc),
+        #BatchNorm1d(hiddenLayerSize, dtype, dvc),
+        Tanh(),
+        LinearWithBias(hiddenLayerSize, hiddenLayerSize, g, dtype, dvc),
+        #BatchNorm1d(hiddenLayerSize, dtype, dvc),
+        Tanh(),
+        #BatchNorm1d(vocabularyLength, dtype, dvc),
+    ]    
+    
+    lastLayer = LinearWithBias(hiddenLayerSize, vocabularyLength, g, dtype, dvc)
+
+    np.layers.append(lastLayer)
+
+
     with torch.no_grad():
         # last layer: make less confident
-        firstLayer.weight *= 0.1
+        lastLayer.weight *= 0.1
         # all other layers: apply gain
         for l in np.layers[:-1]:
-            if (isinstance(l, Linear)):
+            if (isinstance(l, Linear) or isinstance(l, LinearWithBias)):
                 l.weight *= 5 / 3
     np.parameters = [np.C] + [p for l in np.layers for p in l.parameters()]
     for p in np.parameters:
