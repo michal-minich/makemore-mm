@@ -20,39 +20,45 @@ def makeNetwork(g: torch.Generator,
                 dvc: torch.device) -> NetParameters:
     np = NetParameters()
     np.C = torch.rand((vocabularyLength, embeddingDims), generator=g)
-    firstLayer = LinearWithBias(embeddingDims * contextSize, hiddenLayerSize, g, dtype, dvc)
+    h = hiddenLayerSize
 
     np.layers = [
-        firstLayer,
-        #BatchNorm1d(hiddenLayerSize, dtype, dvc),
+        Linear(embeddingDims * contextSize, h, g, dtype, dvc),
+        BatchNorm1d(h, dtype, dvc),
         Tanh(),
-        LinearWithBias(hiddenLayerSize, hiddenLayerSize, g, dtype, dvc),
-        #BatchNorm1d(hiddenLayerSize, dtype, dvc),
+
+        Linear(h, h, g, dtype, dvc),
+        BatchNorm1d(h, dtype, dvc),
         Tanh(),
-        LinearWithBias(hiddenLayerSize, hiddenLayerSize, g, dtype, dvc),
-        #BatchNorm1d(hiddenLayerSize, dtype, dvc),
+
+        Linear(h, h, g, dtype, dvc),
+        BatchNorm1d(h, dtype, dvc),
         Tanh(),
-        LinearWithBias(hiddenLayerSize, hiddenLayerSize, g, dtype, dvc),
-        #BatchNorm1d(hiddenLayerSize, dtype, dvc),
+        
+        Linear(h, h, g, dtype, dvc),
+        BatchNorm1d(h, dtype, dvc),
         Tanh(),
-        LinearWithBias(hiddenLayerSize, hiddenLayerSize, g, dtype, dvc),
-        #BatchNorm1d(hiddenLayerSize, dtype, dvc),
+
+        Linear(h, h, g, dtype, dvc),
+        BatchNorm1d(h, dtype, dvc),
         Tanh(),
-        #BatchNorm1d(vocabularyLength, dtype, dvc),
+
+        Linear(h, vocabularyLength, g, dtype, dvc)
     ]    
     
-    lastLayer = LinearWithBias(hiddenLayerSize, vocabularyLength, g, dtype, dvc)
+    lastLayer = BatchNorm1d(vocabularyLength, dtype, dvc)
 
     np.layers.append(lastLayer)
 
 
     with torch.no_grad():
         # last layer: make less confident
-        lastLayer.weight *= 0.1
+        #lastLayer.weight *= 0.1
+        lastLayer.gamma *= 0.1
         # all other layers: apply gain
         for l in np.layers[:-1]:
             if (isinstance(l, Linear) or isinstance(l, LinearWithBias)):
-                l.weight *= 5 / 3
+                l.weight *= 1.0 # 5 / 3
     np.parameters = [np.C] + [p for l in np.layers for p in l.parameters()]
     for p in np.parameters:
         p.requires_grad = True
@@ -60,11 +66,8 @@ def makeNetwork(g: torch.Generator,
 
 
 def printNetworkInfo(np: NetParameters):
-    log('Network Structure')
+    log('Network Layers Structure')
     for l in np.layers:
-        logSimple("Layer " + l.name + ": ", end="")
-        for p in l.parameters():
-            logSimple(p.shape, end="; ")
-        logSimple()
+        log("  " + l.name, ", ".join(getSizeString(p.shape) for p in l.parameters()))
     log('Parameters Count', sum(p.nelement() for p in np.parameters))
 

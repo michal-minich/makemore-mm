@@ -1,4 +1,5 @@
 from torch import Tensor
+from mm.common import not_null
 
 
 class Sample:
@@ -19,7 +20,7 @@ def updateNet(parameters: list[Tensor],
     res = UpdateNetResult()
     res.learningRate = max(endLr, startLr - (startLr - endLr) * iteration / maxIteration)
     for p in parameters:
-       p.data += -res.learningRate * p.grad # type: ignore
+       p.data += -res.learningRate * not_null(p.grad)
     return res
 
 

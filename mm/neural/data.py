@@ -65,9 +65,9 @@ def buildDataSet(ldr: LoadDataResult,
                  dtype: torch.dtype,
                  dvc: torch.device) -> DataSet:
     
-    log("data dtype", dtype)
-    log("trRatio", trRatio)
-    log("devRatio", valRatio)
+    log("Data dtype", dtype)
+    log("Training ratio", trRatio)
+    log("Validation ratio", valRatio)
 
     ds = DataSet()
 
@@ -107,6 +107,6 @@ def buildDataSetSection(words: list[str],
             y.append(ix)
             #\print("".join(itos[i] for i in context), "--->", itos[ix])
             context = context[1:] + [ix]
-    dss.x = torch.tensor(x, dtype=dtype, device=dvc)
-    dss.y = torch.tensor(y, dtype=dtype, device=dvc)
+    dss.x = torch.tensor(x,device=dvc)
+    dss.y = torch.tensor(y,  device=dvc)
     return dss

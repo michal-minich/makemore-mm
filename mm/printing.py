@@ -13,7 +13,7 @@ def log(
     sep: str | None = " ",
     end: str | None = "\n"
 ) -> None:
-    lbl = "" if label == None else f"{(label + ':'):<20}"
+    lbl = "" if label == None else f"{(label + ':'):<24}"
     logSimple(lbl, *values, sep=sep, end=end)
 
 
@@ -33,11 +33,12 @@ def logSection(title: str) -> None:
 
 
 def initLogging(title: str) -> None:
-    currentDateTime = datetime.now()
-    currentDateTimeStr = currentDateTime.strftime("%Y-%m-%d_%H_%M_%S")
-    logsPath = "./logs/"
+    now = datetime.now()
+    month = now.strftime("%m")
+    day = now.strftime("%d")
+    logsPath = "./logs/" + month + "/" + day + "/"
     global logFilePath 
-    logFilePath = logsPath + currentDateTimeStr + ".txt"
+    logFilePath = logsPath + now.strftime("%Y-%m-%d_%H_%M_%S") + ".txt"
     if not os.path.exists(logsPath):
         os.makedirs(logsPath)
     logSection(title)

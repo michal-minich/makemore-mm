@@ -1,6 +1,5 @@
+from typing import Optional, TypeVar
 
-
-from torch import Size
 
 
 def findLowestIndex(arr: list) -> int:
@@ -14,3 +13,13 @@ def findLowestIndex(arr: list) -> int:
 def readFileSplitByLine(name: str) -> list[str]:
     words = open(name, "r", encoding="utf-8").read().splitlines()
     return words
+
+
+T = TypeVar('T')
+
+
+def not_null(value: Optional[T]) -> T:
+    if value is not None:
+        return value
+    else:
+        raise ValueError("Value cannot be None.")

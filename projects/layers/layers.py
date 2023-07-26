@@ -105,8 +105,8 @@ class BatchNorm1d(Layer):
         # update the buffers
         if self.training:
             with torch.no_grad():
-                    self.running_mean = (1 - self.momentum) * self.running_mean + self.momentum * xmean
-                    self.running_var = (1 - self.momentum) * self.running_var + self.momentum * xvar
+                self.running_mean = (1 - self.momentum) * self.running_mean + self.momentum * xmean
+                self.running_var = (1 - self.momentum) * self.running_var + self.momentum * xvar
         return self.out
 
 
