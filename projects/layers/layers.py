@@ -34,7 +34,7 @@ class Linear(Layer):
                  dtype: torch.dtype,
                  device: torch.device) -> None:
         super().__init__()
-        self.weight: Tensor = torch.rand(
+        self.weight: Tensor = torch.randn(
             (fanIn, fanOut), generator=generator, dtype=dtype, device=device) / fanIn ** 0.5
 
 
@@ -47,7 +47,7 @@ class Linear(Layer):
         return [self.weight]
 
 
-class LinearWithBias(Layer):
+class LinearWithBias(Linear):
 
     def __init__(self: 'LinearWithBias',
                  fanIn: int, 
@@ -55,16 +55,13 @@ class LinearWithBias(Layer):
                  generator: torch.Generator,
                  dtype: torch.dtype,
                  device: torch.device) -> None:
-        #super().__init__(fanIn, fanOut, generator, dtype, device)
-        super().__init__()
-        self.weight: Tensor = torch.rand(
-            (fanIn, fanOut), generator=generator, dtype=dtype, device=device) / fanIn ** 0.5
+        super().__init__(fanIn, fanOut, generator, dtype, device)
         self.bias = torch.zeros(fanOut, dtype=dtype, device=device)
 
 
     def __call__(self: 'LinearWithBias', x: Tensor) -> Tensor:
-        #super().__call__(x)
-        self.out = x @ self.weight + self.bias
+        super().__call__(x)
+        self.out += self.bias
         return self.out
 
 
