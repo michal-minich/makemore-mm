@@ -20,6 +20,7 @@
         "probs",
         "pyplot",
         "randn",
+        "savefig",
         "softmax",
         "stepi",
         "stoi",

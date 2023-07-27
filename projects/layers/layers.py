@@ -1,28 +1,7 @@
-from abc import abstractmethod
 import torch
 from torch import Tensor
+from mm.layers import *
 from mm.printing import *
-
-
-layerCount = 0
-
-class Layer:
-    
-    out: Tensor
-    name: str
-
-    def __init__(self) -> None:
-        global layerCount 
-        layerCount += 1
-        self.name = type(self).__name__ + " " + str(layerCount)
-
-    @abstractmethod
-    def parameters(self) -> list[Tensor]:
-        pass
-    
-    @abstractmethod
-    def __call__(self, x: Tensor) -> Tensor:
-        pass
 
 
 class Linear(Layer):
@@ -36,6 +15,7 @@ class Linear(Layer):
         super().__init__()
         self.weight: Tensor = torch.randn(
             (fanIn, fanOut), generator=generator, dtype=dtype, device=device) / fanIn ** 0.5
+        self.out = self.weight
 
 
     def __call__(self: 'Linear', x: Tensor | float) -> Tensor:
@@ -57,6 +37,7 @@ class LinearWithBias(Linear):
                  device: torch.device) -> None:
         super().__init__(fanIn, fanOut, generator, dtype, device)
         self.bias = torch.zeros(fanOut, dtype=dtype, device=device)
+        self.out = self.weight + self.bias
 
 
     def __call__(self: 'LinearWithBias', x: Tensor) -> Tensor:
