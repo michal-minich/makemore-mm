@@ -1,9 +1,9 @@
-from typing import Optional, TypeVar
+from typing import Any, Optional, TypeVar
 import torch
 
 
 
-def findLowestIndex(arr: list) -> int:
+def findLowestIndex(arr: list[Any]) -> int:
     ix = 0
     for i in range(1, len(arr)):
         if arr[i] < arr[ix]:

@@ -58,31 +58,22 @@ def savePlot() -> None:
     global logsPath, plotCounter
     time = datetime.now().strftime("%H_%M_%S")
     t = plt.gca().get_title().replace("/", "-")
-    filename = str(plotCounter).zfill(2) + " " + t + " (" + time + ").png"
+    filename = str(plotCounter).zfill(2) + ". " + t + " (" + time + ").png"
     plotCounter += 1
     log("Plot", filename)
     plt.savefig(logsPath + filename)
 
 
-class TrainingStats:
-    ix: int
-    learningRate: float
-    forwardPassLoss: float
-    paramGradStd: list[float]
-    paramDataStd: list[float]
-
-
 class TrainingStatLists:
-    ix: list[int] = []
+    step: list[int] = []
     learningRate: list[float] = []
     forwardPassLoss: list[float] = []
-    paramGradStd: list[list[float]] = []
-    paramDataStd: list[list[float]] = []
+    gradToData: list[list[float]] = []
     
 
 def plotActivationsDistribution(T: type, layers: list[Layer], useGrad = False):
     title = "Activations distribution - " + T.__name__ + (" (Grad)" if useGrad else "")
-    plt.figure(figsize=(15, 7))
+    fig, ax = plt.subplots(figsize=(15, 7))
     plt.title(title)
     legends = []
     logSimple(title)
@@ -98,53 +89,53 @@ def plotActivationsDistribution(T: type, layers: list[Layer], useGrad = False):
             plt.plot(hx[:-1].detach(), hy.detach())
             legends.append(l.longName())
     plt.legend(legends)
-    #applyStyle(fig, ax)
+    applyStyle(fig, ax)
     savePlot()
 
 
 def plotGradWeightsDistribution(T: type, C: torch.Tensor, layers: list[Layer]):
     title = "Gradients weights distribution"
-    plt.figure(figsize=(15, 7))
+    fig, ax = plt.subplots(figsize=(15, 7))
     legends: list[str] = []
     logSimple(title)
-    logSimple(f"  C")
+    log(f"  C", end="")
     gradWeightForParam(C, "C", legends)
     for l in layers:
         if isinstance(l, T):
-            logSimple(f"  " + l.longName(), end=("" if len(l.parameters()) == 1 else "\n"))
+            log(f"  " + l.longName(), end=("" if len(l.parameters()) == 1 else "\n"))
             for p in l.parameters():
                 gradWeightForParam(p, l.longName(), legends)
     plt.legend(legends)
     plt.title(title)
-    #applyStyle(fig ax)
+    applyStyle(fig, ax)
     savePlot()
 
 
 def gradWeightForParam(p: torch.Tensor, layerName: str, legends: list[str]):
     g = not_null(p.grad)
-    log(f"    Weight", f"{getSizeString(p.shape):>10}, mean: {g.mean():+.5f}, std: {g.std():e}", end="")
+    logSimple(f"    Weight", f"{getSizeString(p.shape):>10}, mean: {g.mean():+.5f}, std: {g.std():e}", end="")
     logSimple(f", data ratio: {g.std() / p.std():e}")
     hy, hx = torch.histogram(g, density=True)
     plt.plot(hx[:-1].detach(), hy.detach())
     legends.append(f"{layerName} {tuple(p.shape)}")
 
 
-def plotGradientUpdateRatio(ud: list[float], parameters: list[torch.Tensor], names: list[str]) -> None:
-    title = "Gradient update / Data ratio"
-    plt.figure(figsize=(15, 7))
+def plotGradientUpdateRatio(ud: list[list[float]], parameters: list[torch.Tensor], names: list[str]) -> None:
+    title = "(Log) Gradient update / Data ratio"
+    fig, ax = plt.subplots(figsize=(15, 7))
     legends = []
     for i, p in enumerate(parameters):
         if p.ndim == 2:
             plt.plot([ud[j][i] for j in range(len(ud))])
             legends.append(names[i])
-    plt.plot([0, len(ud)], [-3, -3], "k") # these ratios should be ~1e-3, indicate on plot
+    plt.plot([0, len(ud)], [-3, -3], color="#999999", label="Target Ratio") # these ratios should be ~1e-3, indicate on plot
     plt.legend(legends);
     plt.title(title)
-    #applyStyle(fig, ax)
+    applyStyle(fig, ax)
     savePlot()
     
 
-def plotXY(x: list[float], y: list[float], title: str) -> None:
+def plotXY(x: list[float] | list[int], y: list[float], title: str) -> None:
     fig, ax = plt.subplots(figsize=(10, 5))
     ax.plot(x, y)
     #plt.ylim(min(x), max(y))
