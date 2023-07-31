@@ -1,8 +1,10 @@
 from typing import Any
 from datetime import datetime
 import os
-import torch
 from matplotlib import pyplot as plt
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+import torch
 from mm.common import *
 from mm.layers import Layer
 
@@ -37,6 +39,8 @@ def logSection(title: str) -> None:
 
 
 def initLogging(title: str) -> None:
+    global plotCounter
+    plotCounter = 1
     now = datetime.now()
     month = now.strftime("%m")
     day = now.strftime("%d")
@@ -49,9 +53,6 @@ def initLogging(title: str) -> None:
     logSection(title)
 
 
-def getSizeString(size: torch.Size) -> str: 
-    return "[" + ", ".join(str(dim) for dim in size) + "]"
-
 
 def savePlot() -> None:
     global logsPath, plotCounter
@@ -63,6 +64,22 @@ def savePlot() -> None:
     plt.savefig(logsPath + filename)
 
 
+class TrainingStats:
+    ix: int
+    learningRate: float
+    forwardPassLoss: float
+    paramGradStd: list[float]
+    paramDataStd: list[float]
+
+
+class TrainingStatLists:
+    ix: list[int] = []
+    learningRate: list[float] = []
+    forwardPassLoss: list[float] = []
+    paramGradStd: list[list[float]] = []
+    paramDataStd: list[list[float]] = []
+    
+
 def plotActivationsDistribution(T: type, layers: list[Layer], useGrad = False):
     title = "Activations distribution - " + T.__name__ + (" (Grad)" if useGrad else "")
     plt.figure(figsize=(15, 7))
@@ -72,15 +89,16 @@ def plotActivationsDistribution(T: type, layers: list[Layer], useGrad = False):
     for l in layers:
         if isinstance(l, T):
             t: torch.Tensor = not_null(l.out.grad) if useGrad else l.out
-            log("  " + l.name, f"mean: {t.mean():+.5f}, std: {t.std():+.5f}", end="")
+            log("  " + l.longName(), f"mean: {t.mean():+.5f}, std: {t.std():+.5f}", end="")
             if useGrad:
                 logSimple("")
             else:
                 logSimple(f", saturated: {(t.abs() > 0.97).float().mean() * 100:.2f}%")
             hy, hx = torch.histogram(t, density=True)
             plt.plot(hx[:-1].detach(), hy.detach())
-            legends.append(l.name)
+            legends.append(l.longName())
     plt.legend(legends)
+    #applyStyle(fig, ax)
     savePlot()
 
 
@@ -93,11 +111,12 @@ def plotGradWeightsDistribution(T: type, C: torch.Tensor, layers: list[Layer]):
     gradWeightForParam(C, "C", legends)
     for l in layers:
         if isinstance(l, T):
-            logSimple(f"  " + l.name, end=("" if len(l.parameters()) == 1 else "\n"))
+            logSimple(f"  " + l.longName(), end=("" if len(l.parameters()) == 1 else "\n"))
             for p in l.parameters():
-                gradWeightForParam(p, l.name, legends)
+                gradWeightForParam(p, l.longName(), legends)
     plt.legend(legends)
     plt.title(title)
+    #applyStyle(fig ax)
     savePlot()
 
 
@@ -107,7 +126,7 @@ def gradWeightForParam(p: torch.Tensor, layerName: str, legends: list[str]):
     logSimple(f", data ratio: {g.std() / p.std():e}")
     hy, hx = torch.histogram(g, density=True)
     plt.plot(hx[:-1].detach(), hy.detach())
-    legends.append(f'{layerName} {tuple(p.shape)}')
+    legends.append(f"{layerName} {tuple(p.shape)}")
 
 
 def plotGradientUpdateRatio(ud: list[float], parameters: list[torch.Tensor], names: list[str]) -> None:
@@ -120,36 +139,31 @@ def plotGradientUpdateRatio(ud: list[float], parameters: list[torch.Tensor], nam
             legends.append(names[i])
     plt.plot([0, len(ud)], [-3, -3], "k") # these ratios should be ~1e-3, indicate on plot
     plt.legend(legends);
-    plt.title(title);
-    savePlot();
-
-
-def plotLearningRate(lrAtIx: list[float]) -> None:
-    log("Max learning rate", max(lrAtIx))
-    log("Min learning rate", min(lrAtIx))
-    plt.figure()
-    plt.plot(range(len(lrAtIx)), lrAtIx, "black")
-    plt.title('Learning rate progress');
-    plt.ylim(min(lrAtIx), max(lrAtIx))
-    plt.grid(True)
+    plt.title(title)
+    #applyStyle(fig, ax)
     savePlot()
     
 
 def plotXY(x: list[float], y: list[float], title: str) -> None:
-    fig, ax = plt.subplots()
-    fig.set_facecolor("#777777")
-    ax.set_facecolor("#222222")
+    fig, ax = plt.subplots(figsize=(10, 5))
     ax.plot(x, y)
+    #plt.ylim(min(x), max(y))
     plt.title(title);
+    applyStyle(fig, ax)
     savePlot()
     
 
 def plotEmb(C: torch.Tensor, itos: dict[int, str], dim: int) -> None:
-    fig = plt.figure(figsize=(10, 10))
+    fig, ax = plt.subplots(figsize=(10, 10))
     plt.title(f"Embedding at [{dim}, {dim+1}]");
-    fig.set_facecolor("#777777")
     sc = plt.scatter(C[:, dim].data, C[:,dim + 1].data, s=200)
     for i in range(C.shape[0]):
         plt.text(C[i, dim].item(), C[i, dim + 1].item(), itos[i], ha="center", va="center", color="white")
-    plt.grid()
+    applyStyle(fig, ax)
     savePlot()
+
+
+def applyStyle(fig: Figure, ax: Axes):
+    plt.grid(color="#333333")
+    fig.set_facecolor("#777777")
+    ax.set_facecolor("#222222")

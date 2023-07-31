@@ -1,4 +1,5 @@
 from typing import Optional, TypeVar
+import torch
 
 
 
@@ -23,3 +24,7 @@ def not_null(value: Optional[T]) -> T:
         return value
     else:
         raise ValueError("Value cannot be None.")
+
+
+def getSizeString(size: torch.Size) -> str: 
+    return "[" + ", ".join(str(dim) for dim in size) + "]"

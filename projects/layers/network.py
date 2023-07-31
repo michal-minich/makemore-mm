@@ -63,6 +63,40 @@ def makeNetwork(g: torch.Generator,
     return np
 
 
+def makeNetwork4(g: torch.Generator, 
+                vocabularyLength: int, 
+                embeddingDims: int, 
+                contextSize: int, 
+                hiddenLayerSize: int,
+                dtype: torch.dtype,
+                dvc: torch.device) -> NetParameters:
+    np = NetParameters()
+    np.C = torch.rand((vocabularyLength, embeddingDims), generator=g)
+    h = hiddenLayerSize
+
+    np.layers = [
+        Linear(embeddingDims * contextSize, h, g, dtype, dvc),
+        BatchNorm1d(h, dtype, dvc),
+        Tanh(),
+
+        Linear(h, vocabularyLength, g, dtype, dvc)
+    ]    
+    
+    lastLayer = BatchNorm1d(vocabularyLength, dtype, dvc)
+
+    np.layers.append(lastLayer)
+
+
+    with torch.no_grad():
+        # last layer: make less confident
+        lastLayer.gamma *= 0.1
+    np.parameters = [np.C] + [p for l in np.layers for p in l.parameters()]
+    np.paramNames = ["C"] + [l.name for l in np.layers for p in l.parameters()]
+    for p in np.parameters:
+        p.requires_grad = True
+    return np
+
+
 def makeNetwork2(g: torch.Generator, 
                 vocabularyLength: int, 
                 embeddingDims: int, 
@@ -147,6 +181,6 @@ def makeNetwork3(g: torch.Generator,
 def printNetworkInfo(np: NetParameters):
     log('Network Layers Structure')
     for l in np.layers:
-        log("  " + l.name, ", ".join(getSizeString(p.shape) for p in l.parameters()))
+        log("  " + l.name, l.paramsShapeStr())
     log('Parameters Count', sum(p.nelement() for p in np.parameters))
 
